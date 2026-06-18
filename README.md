@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # NEUROSCANAI
 
 NEUROSCANAI is an AI-powered diagnostic assistant for Alzheimer's disease detection. It provides a user-friendly web interface for uploading brain MRI scans and delivers classification predictions across four cognitive status categories.
