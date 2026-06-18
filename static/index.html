@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alzheimer's Disease Prediction - AI Diagnostic Center</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Gradient definition for SVG Icons -->
+    <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+        <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7C3AED" />
+            <stop offset="100%" stop-color="#3B82F6" />
+        </linearGradient>
+    </svg>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <!-- Brain Scanner Icon -->
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+            </svg>
+            <span>NeuroScan AI</span>
+        </div>
+        <div class="model-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill-opacity="0.2"/>
+                <path d="M12 16V12M12 8H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        
+        <!-- Hero Section -->
+        <header class="hero">
+            <h1>Alzheimer's Disease <span class="text-gradient">Diagnostic Assistant</span></h1>
+            <p>Upload a brain MRI scan (sagittal or axial view) to perform an AI-driven multi-stage classification for Alzheimer's disease detection.</p>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <main class="dashboard-grid">
+            
+            <!-- Left Column: MRI Input -->
+            <section class="card">
+                <div class="card-title">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <h2>Brain MRI Upload</h2>
+                </div>
+
+                <!-- Drag & Drop Upload Zone -->
+                <div class="upload-zone" id="upload-zone">
+                    <input type="file" id="file-input" class="file-input" accept="image/*">
+                    
+                    <!-- Standard placeholder content -->
+                    <div class="upload-prompt" id="upload-prompt">
+                        <svg class="upload-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"/>
+                        </svg>
+                        <div class="upload-text">
+                            <h3>Drag & drop MRI scan here</h3>
+                            <p>or click to browse local files (JPEG, PNG)</p>
+                        </div>
+                    </div>
+
+                    <!-- Live Image Preview with scanline overlay -->
+                    <div class="preview-container" id="preview-container">
+                        <button class="btn-remove" id="btn-remove" title="Remove image">&times;</button>
+                        <img src="" alt="MRI Preview" class="preview-image" id="preview-image">
+                        <div class="scan-overlay">
+                            <div class="scan-line"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic controls -->
+                <div class="controls">
+                    <button class="btn btn-secondary" id="btn-clear" disabled>Clear</button>
+                    <button class="btn btn-primary" id="btn-analyze" disabled>
+                        <span>Run Diagnostics</span>
+                    </button>
+                </div>
+
+                <!-- Quick Test Section with Sample MRI Cards -->
+                <div class="sample-images">
+                    <h4 class="sample-title">Quick Test Templates</h4>
+                    <div class="sample-grid" id="sample-grid">
+                        <div class="sample-card" data-sample="non_demented">
+                            <div class="sample-img-container">
+                                <img src="samples/non_demented.png" alt="Non Demented MRI">
+                            </div>
+                            <span>Non-Demented</span>
+                        </div>
+                        <div class="sample-card" data-sample="very_mild">
+                            <div class="sample-img-container">
+                                <img src="samples/very_mild.png" alt="Very Mild MRI">
+                            </div>
+                            <span>Very Mild</span>
+                        </div>
+                        <div class="sample-card" data-sample="mild">
+                            <div class="sample-img-container">
+                                <img src="samples/mild.png" alt="Mild MRI">
+                            </div>
+                            <span>Mild Demented</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Results Diagnostic -->
+            <section class="card" id="results-card">
+                <div class="card-title">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <h2>Diagnostic Results</h2>
+                </div>
+
+                <!-- Empty State Placeholder -->
+                <div class="results-placeholder" id="results-placeholder">
+                    <!-- Heart-Brain pulse icon -->
+                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p>Awaiting brain MRI image selection.<br>Select a sample image or upload a scan to run the classification model.</p>
+                </div>
+
+                <!-- Prediction output charts -->
+                <div class="results-content" id="results-content">
+                    <div class="diagnosis-header">
+                        <div class="diagnosis-label">
+                            <h4>Primary Diagnosis</h4>
+                            <span class="diagnosis-value" id="diagnosis-val">Non Demented</span>
+                        </div>
+                        <div class="confidence-badge">
+                            <span class="confidence-val" id="confidence-val">0.0%</span>
+                            <span class="confidence-label">Confidence</span>
+                        </div>
+                    </div>
+
+                    <!-- Chart Bars -->
+                    <div class="chart-container">
+                        <!-- Non Demented -->
+                        <div class="chart-bar-wrapper">
+                            <div class="chart-bar-labels">
+                                <span>Non Demented</span>
+                                <span id="label-prob-non">0.0%</span>
+                            </div>
+                            <div class="chart-bar-track">
+                                <div class="chart-bar-fill bar-non" id="bar-non"></div>
+                            </div>
+                        </div>
+
+                        <!-- Very Mild Demented -->
+                        <div class="chart-bar-wrapper">
+                            <div class="chart-bar-labels">
+                                <span>Very Mild Demented</span>
+                                <span id="label-prob-very-mild">0.0%</span>
+                            </div>
+                            <div class="chart-bar-track">
+                                <div class="chart-bar-fill bar-very-mild" id="bar-very-mild"></div>
+                            </div>
+                        </div>
+
+                        <!-- Mild Demented -->
+                        <div class="chart-bar-wrapper">
+                            <div class="chart-bar-labels">
+                                <span>Mild Demented</span>
+                                <span id="label-prob-mild">0.0%</span>
+                            </div>
+                            <div class="chart-bar-track">
+                                <div class="chart-bar-fill bar-mild" id="bar-mild"></div>
+                            </div>
+                        </div>
+
+                        <!-- Moderate Demented -->
+                        <div class="chart-bar-wrapper">
+                            <div class="chart-bar-labels">
+                                <span>Moderate Demented</span>
+                                <span id="label-prob-mod">0.0%</span>
+                            </div>
+                            <div class="chart-bar-track">
+                                <div class="chart-bar-fill bar-mod" id="bar-mod"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Medical Advice Card -->
+                    <div class="recommendation-card" id="recommendation-card">
+                        <h5 id="rec-title">Condition Guide</h5>
+                        <p id="rec-text">No prediction loaded yet.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Scan History List (Local Storage) -->
+            <section class="card history-section">
+                <div class="card-title">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <h2>Scan History</h2>
+                </div>
+                <div class="history-list" id="history-list">
+                    <div class="history-empty">No clinical logs saved in this session. Runs will save locally.</div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Educational Section -->
+        <section class="education-section">
+            <div class="education-title">
+                <h2>Clinical Disease Progression Stages</h2>
+                <p>Understanding the classifications predicted by our Deep Learning model.</p>
+            </div>
+            
+            <div class="education-grid">
+                <!-- Non Demented -->
+                <div class="edu-card">
+                    <div class="edu-card-header">
+                        <div class="edu-icon-indicator" style="background: var(--color-non);"></div>
+                        <h3>Non-Demented</h3>
+                    </div>
+                    <p>No noticeable cognitive decline. The brain structures are intact with normal volume in regions like the hippocampus, showing standard age-related changes only.</p>
+                </div>
+
+                <!-- Very Mild Demented -->
+                <div class="edu-card">
+                    <div class="edu-card-header">
+                        <div class="edu-icon-indicator" style="background: var(--color-very-mild);"></div>
+                        <h3>Very Mild Demented</h3>
+                    </div>
+                    <p>Corresponds to Mild Cognitive Impairment (MCI). Small memory lapses, difficulty remembering names or finding objects, while independent daily activities remain normal.</p>
+                </div>
+
+                <!-- Mild Demented -->
+                <div class="edu-card">
+                    <div class="edu-card-header">
+                        <div class="edu-icon-indicator" style="background: var(--color-mild);"></div>
+                        <h3>Mild Demented</h3>
+                    </div>
+                    <p>Early-stage Alzheimer's. Cognitive losses are clear. Individuals find it harder to plan or organize, manage finances, and may get lost in familiar places. Mood changes occur.</p>
+                </div>
+
+                <!-- Moderate Demented -->
+                <div class="edu-card">
+                    <div class="edu-card-header">
+                        <div class="edu-icon-indicator" style="background: var(--color-mod);"></div>
+                        <h3>Moderate Demented</h3>
+                    </div>
+                    <p>Middle-stage Alzheimer's. Major gaps in memory. Need assistance with daily living (dressing, cooking). Confusion about dates, locations, and personal history is frequent.</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <!-- <p>&copy; 2026 NeuroScan AI Diagnostic Suite. Powered by TensorFlow, Keras EfficientNetB0, and Flask.</p> -->
+        <p>Disclaimer: This tool is for educational and research demonstration purposes only. It is not a substitute for professional clinical medical advice.</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
