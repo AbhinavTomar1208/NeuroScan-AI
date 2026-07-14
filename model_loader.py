@@ -1,6 +1,7 @@
 import os
 import json
 import h5py
+import re
 import numpy as np
 import tensorflow as tf
 from PIL import Image
@@ -12,63 +13,63 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ORIGINAL_MODEL_PATH = os.path.join(BASE_DIR, "Alzheimer_Detection_model (1).h5")
 CLEANED_MODEL_PATH = os.path.join(BASE_DIR, "Alzheimer_Detection_model_cleaned.h5")
 
-# Dummy class to act as a fallback for Keras 3's DTypePolicy in Keras 2 environment
-class FakeDTypePolicy:
-    def __init__(self, name="float32", **kwargs):
-        self.name = name
-    @classmethod
-    def from_config(cls, config):
-        return cls(**config)
-    def get_config(self):
-        return {"name": self.name}
-
-def clean_config_dict(d):
-    """Recursively adapts the Keras 3 model configuration JSON structure to be compatible with Keras 2."""
-    if isinstance(d, dict):
-        # 1. Strip quantization config if present
-        if 'quantization_config' in d:
-            del d['quantization_config']
-            
-        # 2. Fix InputLayer configuration properties
-        if d.get('class_name') == 'InputLayer' and 'config' in d:
-            cfg = d['config']
-            if 'batch_shape' in cfg:
-                bs = cfg.pop('batch_shape')
-                if bs and len(bs) >= 3:
-                    cfg['input_shape'] = bs[1:]
-            cfg.pop('optional', None)
-
-        # Recursively crawl nested keys
-        for k, v in list(d.items()):
-            clean_config_dict(v)
-    elif isinstance(d, list):
-        for item in d:
-            clean_config_dict(item)
-
 def ensure_cleaned_model():
-    """Generates the compatible model format from the original file."""
+    """Generates the compatible model format from the original file by rewriting the JSON structure."""
     print("Generating fully compatible model configuration from original...")
     if not os.path.exists(ORIGINAL_MODEL_PATH):
         raise FileNotFoundError(f"Original model not found at: {ORIGINAL_MODEL_PATH}")
 
-    # Read original configuration
+    # Read original configuration string directly
     with h5py.File(ORIGINAL_MODEL_PATH, 'r') as f:
         config_str = f.attrs['model_config']
         if isinstance(config_str, bytes):
             config_str = config_str.decode('utf-8')
-        config = json.loads(config_str)
 
-    # Apply core compatibility updates (InputLayer batch_shape, optional, etc.)
-    clean_config_dict(config)
+    # 1. Strip 'quantization_config' completely
+    config_str = re.sub(r'"quantization_config"\s*:\s*\{[^}]*\},?', '', config_str)
+
+    # 2. Hard-replace Keras 3 DTypePolicy dictionary blocks with a plain "float32" string
+    # This targets blocks like: "dtype": {"module": "keras", "class_name": "DTypePolicy", "config": {"name": "float32"}, ...}
+    config_str = re.sub(
+        r'"dtype"\s*:\s*\{\s*"module"\s*:\s*"keras"\s*,\s*"class_name"\s*:\s*"DTypePolicy"[^}]*\}\s*\}', 
+        '"dtype": "float32"', 
+        config_str
+    )
+    # Also clean up standard DTypePolicy dictionaries without module definitions
+    config_str = re.sub(
+        r'"dtype"\s*:\s*\{\s*"class_name"\s*:\s*"DTypePolicy"[^}]*\}', 
+        '"dtype": "float32"', 
+        config_str
+    )
+
+    # 3. Load it back into JSON format to modify internal InputLayer properties safely
+    config = json.loads(config_str)
+
+    def fix_input_layers(d):
+        if isinstance(d, dict):
+            if d.get('class_name') == 'InputLayer' and 'config' in d:
+                cfg = d['config']
+                if 'batch_shape' in cfg:
+                    bs = cfg.pop('batch_shape')
+                    if bs and len(bs) >= 3:
+                        cfg['input_shape'] = bs[1:]
+                cfg.pop('optional', None)
+            for k, v in list(d.items()):
+                fix_input_layers(v)
+        elif isinstance(d, list):
+            for item in d:
+                fix_input_layers(item)
+
+    fix_input_layers(config)
     cleaned_config_str = json.dumps(config)
 
-    # Safely copy binary file contents to target destination 
+    # Safely duplicate binary structural file contents
     import shutil
     shutil.copy2(ORIGINAL_MODEL_PATH, CLEANED_MODEL_PATH)
 
-    # Write cleaned config to the copy
+    # Re-apply the entirely converted structural architecture configuration
     with h5py.File(CLEANED_MODEL_PATH, 'r+') as f:
-        f.attrs['model_config'] = cleaned_config_str
+        f.attrs['model_config'] = cleaned_config_str.encode('utf-8')
 
     print("Cleaned model successfully updated and created.")
     return CLEANED_MODEL_PATH
@@ -78,51 +79,8 @@ class AlzheimerModel:
         cleaned_path = ensure_cleaned_model()
         print("Loading TensorFlow Keras model...")
         
-        # We register DTypePolicy under custom_object_scope to bypass deserialization crashes!
-        with tf.keras.utils.custom_object_scope({'DTypePolicy': FakeDTypePolicy}):
-            self.model = tf.keras.models.load_model(cleaned_path, compile=False)
+        # Load the updated architecture smoothly
+        self.model = tf.keras.models.load_model(cleaned_path, compile=False)
             
         self.classes = ['Mild Demented', 'Moderate Demented', 'Non Demented', 'Very Mild Demented']
         print("Model loaded successfully!")
-
-    def predict(self, image_pil):
-        """
-        Takes a PIL image, preprocesses it, and runs inference.
-        Returns a tuple: (predicted_class_name, confidence, dict_of_all_probabilities)
-        """
-        # Convert to RGB if not already
-        if image_pil.mode != 'RGB':
-            image_pil = image_pil.convert('RGB')
-            
-        # Resize to 224x224 (required by EfficientNetB0 in this model)
-        image_resized = image_pil.resize((224, 224), Image.Resampling.LANCZOS)
-        
-        # Convert to numpy array and prepare for model
-        img_array = np.array(image_resized, dtype=np.float32)
-        
-        # Add batch dimension (shape: 1, 224, 224, 3)
-        img_array = np.expand_dims(img_array, axis=0)
-        
-        # Predict (Keras Rescaling layer in model will scale [0, 255] to [0, 1] internally)
-        predictions = self.model.predict(img_array)
-        probs = predictions[0]
-        
-        # Map predictions to output format
-        predicted_idx = np.argmax(probs)
-        predicted_class = self.classes[predicted_idx]
-        confidence = float(probs[predicted_idx])
-        
-        all_probs = {self.classes[i]: float(probs[i]) for i in range(len(self.classes))}
-        
-        return predicted_class, confidence, all_probs
-
-if __name__ == '__main__':
-    # Dry run test
-    loader = AlzheimerModel()
-    # Dummy test image
-    dummy_img = Image.fromarray(np.random.randint(0, 256, (224, 224, 3), dtype=np.uint8))
-    pred_class, conf, all_probs = loader.predict(dummy_img)
-    print("Test prediction result:")
-    print("Class:", pred_class)
-    print("Confidence:", conf)
-    print("All Probs:", all_probs)
