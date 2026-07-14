@@ -12,6 +12,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ORIGINAL_MODEL_PATH = os.path.join(BASE_DIR, "Alzheimer_Detection_model (1).h5")
 CLEANED_MODEL_PATH = os.path.join(BASE_DIR, "Alzheimer_Detection_model_cleaned.h5")
 
+# Dummy class to act as a fallback for Keras 3's DTypePolicy in Keras 2 environment
+class FakeDTypePolicy:
+    def __init__(self, name="float32", **kwargs):
+        self.name = name
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
+    def get_config(self):
+        return {"name": self.name}
+
 def clean_config_dict(d):
     """Recursively adapts the Keras 3 model configuration JSON structure to be compatible with Keras 2."""
     if isinstance(d, dict):
@@ -19,16 +29,7 @@ def clean_config_dict(d):
         if 'quantization_config' in d:
             del d['quantization_config']
             
-        # 2. Force 'dtype' to be a plain string format (CRITICAL FOR KERAS 2)
-        if 'dtype' in d:
-            if isinstance(d['dtype'], dict):
-                policy_config = d['dtype'].get('config', {})
-                policy_name = policy_config.get('name', 'float32') if isinstance(policy_config, dict) else 'float32'
-                d['dtype'] = policy_name
-            elif isinstance(d['dtype'], str) and 'DTypePolicy' in d['dtype']:
-                d['dtype'] = 'float32'
-
-        # 3. Fix InputLayer configuration properties
+        # 2. Fix InputLayer configuration properties
         if d.get('class_name') == 'InputLayer' and 'config' in d:
             cfg = d['config']
             if 'batch_shape' in cfg:
@@ -43,10 +44,9 @@ def clean_config_dict(d):
     elif isinstance(d, list):
         for item in d:
             clean_config_dict(item)
-            
+
 def ensure_cleaned_model():
     """Generates the compatible model format from the original file."""
-    # Force regeneration every time to clear out the previous incompatible 'cleaned' file on the server
     print("Generating fully compatible model configuration from original...")
     if not os.path.exists(ORIGINAL_MODEL_PATH):
         raise FileNotFoundError(f"Original model not found at: {ORIGINAL_MODEL_PATH}")
@@ -58,7 +58,7 @@ def ensure_cleaned_model():
             config_str = config_str.decode('utf-8')
         config = json.loads(config_str)
 
-    # Apply all compatibility updates (InputLayer batch_shape, optional, etc.)
+    # Apply core compatibility updates (InputLayer batch_shape, optional, etc.)
     clean_config_dict(config)
     cleaned_config_str = json.dumps(config)
 
@@ -72,12 +72,16 @@ def ensure_cleaned_model():
 
     print("Cleaned model successfully updated and created.")
     return CLEANED_MODEL_PATH
-    
+
 class AlzheimerModel:
     def __init__(self):
         cleaned_path = ensure_cleaned_model()
         print("Loading TensorFlow Keras model...")
-        self.model = tf.keras.models.load_model(cleaned_path, compile=False)
+        
+        # We register DTypePolicy under custom_object_scope to bypass deserialization crashes!
+        with tf.keras.utils.custom_object_scope({'DTypePolicy': FakeDTypePolicy}):
+            self.model = tf.keras.models.load_model(cleaned_path, compile=False)
+            
         self.classes = ['Mild Demented', 'Moderate Demented', 'Non Demented', 'Very Mild Demented']
         print("Model loaded successfully!")
 
