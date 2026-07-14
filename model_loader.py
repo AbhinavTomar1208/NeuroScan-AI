@@ -13,18 +13,29 @@ ORIGINAL_MODEL_PATH = os.path.join(BASE_DIR, "Alzheimer_Detection_model (1).h5")
 CLEANED_MODEL_PATH = os.path.join(BASE_DIR, "Alzheimer_Detection_model_cleaned.h5")
 
 def clean_config_dict(d):
-    """Recursively deletes 'quantization_config' keys from the config structure."""
+    """Recursively deletes 'quantization_config' and flattens 'DTypePolicy' to a regular string."""
     if isinstance(d, dict):
+        # 1. Strip quantization config if present
         if 'quantization_config' in d:
             del d['quantization_config']
+            
+        # 2. Fix complex dictionary 'dtype' policies (Keras 3 -> Keras 2)
+        if 'dtype' in d and isinstance(d['dtype'], dict):
+            # If it contains a nested Keras DTypePolicy name, extract it (e.g., 'float32')
+            policy_config = d['dtype'].get('config', {})
+            policy_name = policy_config.get('name', 'float32') if isinstance(policy_config, dict) else 'float32'
+            d['dtype'] = policy_name
+
+        # 3. Fix InputLayer compatibility issues
         if d.get('class_name') == 'InputLayer' and 'config' in d:
             cfg = d['config']
             if 'batch_shape' in cfg:
                 bs = cfg.pop('batch_shape')
                 if bs and len(bs) >= 3:
-                    cfg['input_shape'] = bs[1:] # e.g., [None, 224, 224, 3] -> [224, 224, 3]
+                    cfg['input_shape'] = bs[1:]
             cfg.pop('optional', None)
 
+        # Recursively scan internal elements
         for k, v in list(d.items()):
             clean_config_dict(v)
     elif isinstance(d, list):
