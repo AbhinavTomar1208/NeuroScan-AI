@@ -77,5 +77,9 @@ if __name__ == '__main__':
         print(f"CRITICAL: Failed to load model at startup: {e}")
         traceback.print_exc()
         
-    print("Starting Flask application on port 5000...")
-    app.run(host='127.0.0.1', port=5000, debug=False)
+    # Dynamically read the PORT assigned by Render, defaulting to 5000 locally
+    port = int(os.environ.get("PORT", 5000))
+    print(f"Starting Flask application on port {port}...")
+    
+    # Host MUST be '0.0.0.0' so Render can bind to it and route traffic
+    app.run(host='0.0.0.0', port=port, debug=False)
