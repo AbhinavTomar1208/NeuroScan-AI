@@ -17,6 +17,14 @@ def clean_config_dict(d):
     if isinstance(d, dict):
         if 'quantization_config' in d:
             del d['quantization_config']
+        if d.get('class_name') == 'InputLayer' and 'config' in d:
+            cfg = d['config']
+            if 'batch_shape' in cfg:
+                bs = cfg.pop('batch_shape')
+                if bs and len(bs) >= 3:
+                    cfg['input_shape'] = bs[1:] # e.g., [None, 224, 224, 3] -> [224, 224, 3]
+            cfg.pop('optional', None)
+
         for k, v in list(d.items()):
             clean_config_dict(v)
     elif isinstance(d, list):
@@ -24,12 +32,9 @@ def clean_config_dict(d):
             clean_config_dict(item)
 
 def ensure_cleaned_model():
-    """Checks if the cleaned model exists. If not, cleans the original and creates it."""
-    if os.path.exists(CLEANED_MODEL_PATH):
-        print("Cleaned model already exists.")
-        return CLEANED_MODEL_PATH
-
-    print("Cleaned model not found. Generating from original...")
+    """Generates the compatible model format from the original file."""
+    # Force regeneration every time to clear out the previous incompatible 'cleaned' file on the server
+    print("Generating fully compatible model configuration from original...")
     if not os.path.exists(ORIGINAL_MODEL_PATH):
         raise FileNotFoundError(f"Original model not found at: {ORIGINAL_MODEL_PATH}")
 
@@ -40,23 +45,21 @@ def ensure_cleaned_model():
             config_str = config_str.decode('utf-8')
         config = json.loads(config_str)
 
-    # Remove incompatible key
+    # Apply all compatibility updates (InputLayer batch_shape, optional, etc.)
     clean_config_dict(config)
     cleaned_config_str = json.dumps(config)
 
-    # Copy file contents
-    with open(ORIGINAL_MODEL_PATH, 'rb') as src:
-        content = src.read()
-    with open(CLEANED_MODEL_PATH, 'wb') as dst:
-        dst.write(content)
+    # Safely copy binary file contents to target destination 
+    import shutil
+    shutil.copy2(ORIGINAL_MODEL_PATH, CLEANED_MODEL_PATH)
 
     # Write cleaned config to the copy
     with h5py.File(CLEANED_MODEL_PATH, 'r+') as f:
         f.attrs['model_config'] = cleaned_config_str
 
-    print("Cleaned model successfully created.")
+    print("Cleaned model successfully updated and created.")
     return CLEANED_MODEL_PATH
-
+    
 class AlzheimerModel:
     def __init__(self):
         cleaned_path = ensure_cleaned_model()
