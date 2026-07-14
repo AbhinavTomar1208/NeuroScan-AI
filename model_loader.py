@@ -5,8 +5,8 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 
-ORIGINAL_MODEL_PATH = r"D:\AlzheimerPred\Alzheimer_Detection_model (1).h5"
-CLEANED_MODEL_PATH = r"D:\AlzheimerPred\Alzheimer_Detection_model_cleaned.h5"
+ORIGINAL_MODEL_PATH = r"D:\NEUROSCAN-AI\Alzheimer_Detection_model (1).h5"
+CLEANED_MODEL_PATH = r"D:\NEUROSCAN-AI\Alzheimer_Detection_model_cleaned.h5"
 
 def clean_config_dict(d):
     """Recursively deletes 'quantization_config' keys from the config structure."""

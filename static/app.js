@@ -31,8 +31,9 @@ const recTitle = document.getElementById('rec-title');
 const recText = document.getElementById('rec-text');
 const recommendationCard = document.getElementById('recommendation-card');
 
-// History Element
+// History Elements
 const historyList = document.getElementById('history-list');
+const btnClearHistory = document.getElementById('btn-clear-history');
 
 // App State
 let selectedFile = null;
@@ -71,6 +72,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadHistoryFromStorage();
     setupUploadHandlers();
     setupSampleHandlers();
+    setupHistoryHandlers();
 });
 
 // Setup drag and drop + click upload
@@ -144,6 +146,31 @@ function setupSampleHandlers() {
             btnAnalyze.disabled = selectedFile === null;
         }
     });
+}
+
+// Setup history controls
+function setupHistoryHandlers() {
+    btnClearHistory.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('Are you sure you want to delete all history records? This action cannot be undone.')) {
+            clearAllHistory();
+        }
+    });
+}
+
+// Clear all history records
+function clearAllHistory() {
+    localStorage.removeItem('alz_diagnostic_history');
+    renderHistory([]);
+    console.log("All history records cleared.");
+}
+
+// Delete a specific history record
+function deleteHistoryRecord(id) {
+    let history = JSON.parse(localStorage.getItem('alz_diagnostic_history')) || [];
+    history = history.filter(item => item.id !== id);
+    localStorage.setItem('alz_diagnostic_history', JSON.stringify(history));
+    renderHistory(history);
 }
 
 // Handle file processing and display
@@ -303,10 +330,14 @@ function loadHistoryFromStorage() {
 
 // Render history entries
 function renderHistory(history) {
+    // Show or hide clear history button
     if (history.length === 0) {
+        btnClearHistory.style.display = 'none';
         historyList.innerHTML = `<div class="history-empty">No clinical logs saved in this session. Runs will save locally.</div>`;
         return;
     }
+
+    btnClearHistory.style.display = 'flex';
 
     historyList.innerHTML = history.map(item => {
         const guide = CLINICAL_GUIDE[item.predictedClass];
@@ -322,19 +353,39 @@ function renderHistory(history) {
                 </div>
                 <div class="history-meta">
                     <span class="badge ${colorClass}">${(item.confidence * 100).toFixed(0)}%</span>
+                    <button class="history-delete-btn" data-id="${item.id}" title="Delete this record">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         `;
     }).join('');
 
-    // Setup history click events
+    // Setup history item click events (for loading)
     const items = historyList.querySelectorAll('.history-item');
     items.forEach(el => {
-        el.addEventListener('click', () => {
-            const id = parseInt(el.dataset.id);
-            const record = history.find(r => r.id === id);
-            if (record) {
-                loadHistoryRecord(record);
+        el.addEventListener('click', (e) => {
+            // Don't load if clicking the delete button
+            if (!e.target.closest('.history-delete-btn')) {
+                const id = parseInt(el.dataset.id);
+                const record = history.find(r => r.id === id);
+                if (record) {
+                    loadHistoryRecord(record);
+                }
+            }
+        });
+    });
+
+    // Setup delete button click events
+    const deleteButtons = historyList.querySelectorAll('.history-delete-btn');
+    deleteButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = parseInt(btn.dataset.id);
+            if (confirm('Delete this scan record?')) {
+                deleteHistoryRecord(id);
             }
         });
     });
