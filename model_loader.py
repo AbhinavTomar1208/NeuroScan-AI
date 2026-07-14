@@ -5,7 +5,11 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 
-ORIGINAL_MODEL_PATH = r"D:\NEUROSCAN-AI\Alzheimer_Detection_model (1).h5"
+# Get the directory where model_loader.py is running
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Dynamically point to the model file inside the same directory
+ORIGINAL_MODEL_PATH = os.path.join(BASE_DIR, "Alzheimer_Detection_model (1).h5")
 CLEANED_MODEL_PATH = r"D:\NEUROSCAN-AI\Alzheimer_Detection_model_cleaned.h5"
 
 def clean_config_dict(d):
