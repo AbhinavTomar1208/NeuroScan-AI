@@ -19,16 +19,14 @@ def clean_config_dict(d):
         if 'quantization_config' in d:
             del d['quantization_config']
             
-        # 2. Convert Keras 3 DTypePolicy dictionary into Keras 2 compatible format
-        if 'dtype' in d and isinstance(d['dtype'], dict):
-            policy_config = d['dtype'].get('config', {})
-            policy_name = policy_config.get('name', 'float32') if isinstance(policy_config, dict) else 'float32'
-            
-            # Reconstruct it as a standard Keras 2 config dictionary instead of a raw string
-            d['dtype'] = {
-                'class_name': 'DTypePolicy',
-                'config': {'name': policy_name}
-            }
+        # 2. Force 'dtype' to be a plain string format (CRITICAL FOR KERAS 2)
+        if 'dtype' in d:
+            if isinstance(d['dtype'], dict):
+                policy_config = d['dtype'].get('config', {})
+                policy_name = policy_config.get('name', 'float32') if isinstance(policy_config, dict) else 'float32'
+                d['dtype'] = policy_name
+            elif isinstance(d['dtype'], str) and 'DTypePolicy' in d['dtype']:
+                d['dtype'] = 'float32'
 
         # 3. Fix InputLayer configuration properties
         if d.get('class_name') == 'InputLayer' and 'config' in d:
