@@ -25,28 +25,29 @@ def ensure_cleaned_model():
         if isinstance(config_str, bytes):
             config_str = config_str.decode('utf-8')
 
-    # 1. Strip 'quantization_config' completely
-    config_str = re.sub(r'"quantization_config"\s*:\s*\{[^}]*\},?', '', config_str)
-
-    # 2. Hard-replace Keras 3 DTypePolicy dictionary blocks with a plain "float32" string
-    # This targets blocks like: "dtype": {"module": "keras", "class_name": "DTypePolicy", "config": {"name": "float32"}, ...}
-    config_str = re.sub(
-        r'"dtype"\s*:\s*\{\s*"module"\s*:\s*"keras"\s*,\s*"class_name"\s*:\s*"DTypePolicy"[^}]*\}\s*\}', 
-        '"dtype": "float32"', 
-        config_str
-    )
-    # Also clean up standard DTypePolicy dictionaries without module definitions
-    config_str = re.sub(
-        r'"dtype"\s*:\s*\{\s*"class_name"\s*:\s*"DTypePolicy"[^}]*\}', 
-        '"dtype": "float32"', 
-        config_str
-    )
-
-    # 3. Load it back into JSON format to modify internal InputLayer properties safely
+    # Load into an actual Python dictionary structure to mutate safely
     config = json.loads(config_str)
 
-    def fix_input_layers(d):
+    def clean_node(d):
+        """Recursively walks the entire model configuration dictionary tree."""
         if isinstance(d, dict):
+            # 1. Clean out the Keras 3 DTypePolicy structures
+            if 'dtype' in d:
+                if isinstance(d['dtype'], dict):
+                    # Extract the type name (e.g., 'float32') out of the Keras 3 metadata dictionary
+                    policy_config = d['dtype'].get('config', {})
+                    if isinstance(policy_config, dict):
+                        d['dtype'] = policy_config.get('name', 'float32')
+                    else:
+                        d['dtype'] = 'float32'
+                elif isinstance(d['dtype'], str) and 'DTypePolicy' in d['dtype']:
+                    d['dtype'] = 'float32'
+
+            # 2. Strip quantization configs if they exist
+            if 'quantization_config' in d:
+                del d['quantization_config']
+
+            # 3. Fix InputLayer compatibility parameters (Keras 3 -> Keras 2)
             if d.get('class_name') == 'InputLayer' and 'config' in d:
                 cfg = d['config']
                 if 'batch_shape' in cfg:
@@ -54,13 +55,16 @@ def ensure_cleaned_model():
                     if bs and len(bs) >= 3:
                         cfg['input_shape'] = bs[1:]
                 cfg.pop('optional', None)
+
+            # Continue deep walk
             for k, v in list(d.items()):
-                fix_input_layers(v)
+                clean_node(v)
         elif isinstance(d, list):
             for item in d:
-                fix_input_layers(item)
+                clean_node(item)
 
-    fix_input_layers(config)
+    # Clean the full configuration structural tree
+    clean_node(config)
     cleaned_config_str = json.dumps(config)
 
     # Safely duplicate binary structural file contents
@@ -73,7 +77,6 @@ def ensure_cleaned_model():
 
     print("Cleaned model successfully updated and created.")
     return CLEANED_MODEL_PATH
-
 class AlzheimerModel:
     def __init__(self):
         cleaned_path = ensure_cleaned_model()
