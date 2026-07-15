@@ -4,6 +4,7 @@ import traceback
 from flask import Flask, request, jsonify
 from PIL import Image
 
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 # Import our model loader helper
 from model_loader import AlzheimerModel
 

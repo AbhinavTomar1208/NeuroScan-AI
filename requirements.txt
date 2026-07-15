@@ -1,6 +1,6 @@
-Flask==2.3.3
-TensorFlow==2.14.0
-h5py==3.10.0
-numpy==1.24.3
-Pillow==10.0.0
-Werkzeug==2.3.7
+Flask==3.0.0
+numpy
+Pillow
+h5py
+Werkzeug
+tensorflow==2.20.0
